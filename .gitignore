@@ -1,0 +1,6 @@
+build/
+.signing/
+*.o
+windows/bin/
+windows/obj/
+plans/

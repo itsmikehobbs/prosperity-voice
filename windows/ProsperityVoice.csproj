@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- WPF only for System.Windows.Automation (UI Automation focus checks). -->
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>ProsperityVoice</AssemblyName>
+    <RootNamespace>ProsperityVoice</RootNamespace>
+    <Version>1.0.0</Version>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <!-- Not single-file: Whisper.net loads its native DLLs from runtimes\win-x64 next to the exe,
+         and can't find them inside a single-file bundle (seen on a fresh Windows Server 2025, 2026-11-04). -->
+    <PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="3.1.0" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Cleanup rules shared with the Mac app (exported by the Mac app export-shared option). -->
+    <EmbeddedResource Include="..\shared\dictation-instructions.txt" LogicalName="dictation-instructions.txt" />
+    <EmbeddedResource Include="..\shared\polish-instructions.txt" LogicalName="polish-instructions.txt" />
+  </ItemGroup>
+</Project>
