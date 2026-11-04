@@ -73,7 +73,7 @@ that list with the minus button, add it back from `/Applications`, and quit and 
 The diagnostic log is `~/Library/Application Support/Prosperity Voice/log.txt` (it never holds
 what was said).
 
-Uninstall: quit it from the menu bar icon, then
+Uninstall: quit it (`osascript -e 'tell application id "tv.mikehobbs.prosperityvoice" to quit'`), then
 `rm -rf "/Applications/Prosperity Voice.app" ~/Library/Application\ Support/Prosperity\ Voice ~/prosperity-voice`
 and `defaults delete tv.mikehobbs.prosperityvoice`. Remove it from Accessibility in System Settings.
 
@@ -81,7 +81,8 @@ and `defaults delete tv.mikehobbs.prosperityvoice`. Remove it from Accessibility
 
 Needs: 64-bit Windows 10 or 11 and a microphone. Use PowerShell for every command.
 
-After any `winget install`, refresh PATH in the same shell so the new tool is found:
+Refresh PATH at the start of each PowerShell session and after any `winget install`, so tools
+installed earlier are found:
 `$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')`
 
 1. **Git.** Run `git --version`. If it's missing:
@@ -106,8 +107,9 @@ After any `winget install`, refresh PATH in the same shell so the new tool is fo
 6. **Cleanup AI.** Check the chosen AI is logged in (see "Cleanup AI choices"), and tell the user
    which AI cleans up their text and that they can change it in Settings.
 7. **Check it's running.** `Get-Process ProsperityVoice` should list it. The last `launch` line in
-   `$env:APPDATA\Prosperity Voice\log.txt` should say `hotkey=True mic=True`; `mic=False` means
-   Windows sees no microphone (plug one in, or check Settings > Privacy > Microphone).
+   `$env:APPDATA\Prosperity Voice\log.txt` should say `hotkey=True mic=True`. If it says `mic=False`, Windows
+   sees no microphone: tell the user to plug one in or check Settings > Privacy > Microphone.
+   The chosen cleanup AI is `CleanupEngine` in `$env:APPDATA\Prosperity Voice\settings.json`.
    For a deeper check, `& "$env:LOCALAPPDATA\Programs\Prosperity Voice\ProsperityVoice.exe" --selftest --claude`
    tests speech and Claude cleanup (use `--chatgpt` or `--grok` for those) (quit the app from the tray first, then start it again after).
 8. **Test (the user does this; an agent can't).** Tell the user: click in any text box, hold
@@ -115,9 +117,10 @@ After any `winget install`, refresh PATH in the same shell so the new tool is fo
    microphone, click **Allow**. The tray icon (bottom right, maybe under the ^ arrow) has Settings
    and History.
 
-Uninstall: right-click the tray icon > Quit, then delete `%LOCALAPPDATA%\Programs\Prosperity Voice`,
-`%APPDATA%\Prosperity Voice`, `%LOCALAPPDATA%\Prosperity Voice`, the Start menu shortcut, and the
-`Prosperity Voice` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
+Uninstall: quit it (`Stop-Process -Name ProsperityVoice`), then delete
+`%LOCALAPPDATA%\Programs\Prosperity Voice`, `%APPDATA%\Prosperity Voice`, `%LOCALAPPDATA%\Prosperity Voice`,
+the Start menu shortcut (`Prosperity Voice.lnk` in `[Environment]::GetFolderPath('Programs')`), and the
+`Prosperity Voice` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` if it exists.
 
 ## When you're done
 

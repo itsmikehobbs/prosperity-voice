@@ -74,6 +74,8 @@ public sealed class Settings
     public bool CleanupChosen { get; set; }
 
     static readonly object Gate = new();
+    /// <summary>Engines saved by name ("Claude"), readable by people and agents; old numeric files still load.</summary>
+    static readonly JsonSerializerOptions Json = new() { WriteIndented = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
     static Settings? current;
 
     public static Settings Current
@@ -89,7 +91,7 @@ public sealed class Settings
         try
         {
             if (File.Exists(Paths.Settings))
-                return JsonSerializer.Deserialize<Settings>(File.ReadAllText(Paths.Settings)) ?? new Settings();
+                return JsonSerializer.Deserialize<Settings>(File.ReadAllText(Paths.Settings), Json) ?? new Settings();
         }
         catch { /* damaged file: start fresh */ }
         return new Settings();
@@ -100,7 +102,7 @@ public sealed class Settings
         lock (Gate)
         {
             var tmp = Paths.Settings + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(tmp, JsonSerializer.Serialize(this, Json));
             File.Move(tmp, Paths.Settings, overwrite: true);
         }
     }

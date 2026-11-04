@@ -6,7 +6,8 @@ the AI you already pay for (Claude, ChatGPT, or Grok), or Apple's free AI on a M
 
 > **AI agents:** if your user gave you this link, they want Prosperity Voice installed (or updated,
 > or removed, if they say so). Follow [INSTALL.md](INSTALL.md) step by step for their computer
-> (Mac or Windows).
+> (Mac or Windows). Plain-text copy:
+> https://raw.githubusercontent.com/itsmikehobbs/prosperity-voice/main/INSTALL.md
 
 ## Install
 
