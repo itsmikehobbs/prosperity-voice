@@ -23,6 +23,8 @@ struct CleanResult {
     var engine: String
     /// Short note for the panel when something fell back.
     var note: String?
+    /// Why the chosen AI failed, for the log only (never holds what was said).
+    var why: String? = nil
 }
 
 enum Mode {
@@ -105,6 +107,11 @@ enum Cleaner {
 
     // MARK: Entry points
 
+    /// One short line for the log, so a tool's error output can't fill it.
+    static func logReason(_ error: Error) -> String {
+        String(error.localizedDescription.split(whereSeparator: \.isNewline).joined(separator: " ").prefix(160))
+    }
+
     /// Clean a dictation using the chosen engine, falling back gracefully. Never throws.
     static func cleanDictation(_ raw: String, engine: CleanupEngine, words: [String]) async -> CleanResult {
         guard let provider = engine.provider else { return CleanResult(text: raw, engine: "raw") }
@@ -112,16 +119,17 @@ enum Cleaner {
             let text = try await run(raw, mode: .dictation, provider: provider, words: words)
             return CleanResult(text: text, engine: provider.rawValue)
         } catch CleanError.rejected {
-            return CleanResult(text: raw, engine: "raw", note: "Cleanup skipped")
+            return CleanResult(text: raw, engine: "raw", note: "Cleanup skipped", why: "rejected")
         } catch {
             // The chosen AI failed or is busy (Apple has a short burst limit). Try one backup:
             // Apple falls back to Claude; the cloud services fall back to Apple.
             let backup: Provider = provider == .apple ? .claude : .apple
             if isAvailable(backup),
                let text = try? await run(raw, mode: .dictation, provider: backup, words: words) {
-                return CleanResult(text: text, engine: backup.rawValue, note: "\(provider.name) failed, used \(backup.name)")
+                return CleanResult(text: text, engine: backup.rawValue, note: "\(provider.name) failed, used \(backup.name)",
+                                   why: logReason(error))
             }
-            return CleanResult(text: raw, engine: "raw", note: "Cleanup skipped")
+            return CleanResult(text: raw, engine: "raw", note: "Cleanup skipped", why: logReason(error))
         }
     }
 
@@ -139,7 +147,9 @@ enum Cleaner {
 
         @Sendable func cleanPiece(_ piece: String) async throws -> String {
             let wrapped = "<\(mode.tag)>\(piece)</\(mode.tag)>"
-            let raw = try await ask(provider, prompt: wrapped, instructions: instructions)
+            let raw = provider.isCloud
+                ? try await askHedged(provider, prompt: wrapped, instructions: instructions)
+                : try await ask(provider, prompt: wrapped, instructions: instructions)
             let out = capitalizeFirst(tidy(raw, tag: mode.tag))
             guard mode.accepts(input: piece, output: out),
                   addedNames(input: piece, output: out, allowed: words).isEmpty else { throw CleanError.rejected }
@@ -178,6 +188,63 @@ enum Cleaner {
     }
 
     // MARK: Engines
+
+    /// The cloud tools usually answer in 2 to 6 seconds, but a call sometimes stalls for 20 to 30
+    /// (a busy server, or the tool retrying). If the first call is slow, start a second one and use
+    /// whichever answers first; the other is stopped. Give up at the hard limit so the caller can
+    /// fall back. Seen 2026-11-04: Claude took 21 and 33 seconds for 70 to 80 words.
+    static func askHedged(_ provider: Provider, prompt: String, instructions: String) async throws -> String {
+        let words = Double(wordCount(prompt))
+        return try await hedged(provider, hedgeAfter: 7.0 + words / 40, giveUpAfter: 25.0 + words / 15) {
+            try await ask(provider, prompt: prompt, instructions: instructions)
+        }
+    }
+
+    /// The racing behind askHedged, separate so the self-test can drive it with fake calls.
+    static func hedged(_ provider: Provider, hedgeAfter: Double, giveUpAfter: Double,
+                       attempt: @escaping @Sendable () async throws -> String) async throws -> String {
+        enum Outcome: Sendable { case text(String), failed(Error), timedOut }
+        let clock = ContinuousClock(), started = clock.now
+        return try await withThrowingTaskGroup(of: Outcome.self) { group in
+            func call(after delay: Double) {
+                group.addTask {
+                    if delay > 0 {
+                        do { try await Task.sleep(for: .seconds(delay)) } catch { return .failed(error) }
+                        Log.write("cleanup slow: \(provider.name) asked again after \(Int(delay))s")
+                    }
+                    do { return .text(try await attempt()) }
+                    catch { return .failed(error) }
+                }
+            }
+            call(after: 0)
+            call(after: hedgeAfter)
+            group.addTask {
+                do { try await Task.sleep(for: .seconds(giveUpAfter)) } catch { return .failed(error) }
+                return .timedOut
+            }
+            var failures = 0
+            while let outcome = try await group.next() {
+                switch outcome {
+                case .text(let text):
+                    group.cancelAll()
+                    return text
+                case .timedOut:
+                    group.cancelAll()
+                    throw CleanError.toolFailed(provider, "timed out after \(Int(giveUpAfter))s")
+                case .failed(let error):
+                    failures += 1
+                    // A quick failure (not logged in, missing tool) won't fix itself: stop now.
+                    // After the second call has started, wait for it.
+                    let secondRunning = clock.now - started >= .seconds(hedgeAfter) && failures < 2
+                    if !secondRunning {
+                        group.cancelAll()
+                        throw error
+                    }
+                }
+            }
+            throw CleanError.toolFailed(provider, "no answer")
+        }
+    }
 
     static func ask(_ provider: Provider, prompt: String, instructions: String) async throws -> String {
         switch provider {
@@ -348,9 +415,15 @@ enum Cleaner {
                         timeoutWords: Int) async throws -> String {
         guard let exe = findTool(provider) else { throw CleanError.toolMissing(provider) }
         let timeout = 45.0 + Double(timeoutWords) / 20.0
-        return try await withCheckedThrowingContinuation { cont in
+        let box = ProcessBox()
+        return try await withTaskCancellationHandler {
+          try await withCheckedThrowingContinuation { cont in
             DispatchQueue.global(qos: .userInitiated).async {
-                let p = Process()
+                let p = box.process
+                if box.cancelled {
+                    cont.resume(throwing: CancellationError())
+                    return
+                }
                 p.executableURL = exe
                 p.arguments = args
                 var env = ProcessInfo.processInfo.environment
@@ -394,6 +467,9 @@ enum Cleaner {
                     cont.resume(throwing: CleanError.toolFailed(provider, String(why.suffix(200))))
                 }
             }
+          }
+        } onCancel: {
+            box.cancel()
         }
     }
 
@@ -490,5 +566,17 @@ enum Cleaner {
         }
         flush()
         return pieces
+    }
+}
+
+/// Lets a cancelled cleanup stop its command-line tool (a slower duplicate call, for example).
+private final class ProcessBox: @unchecked Sendable {
+    let process = Process()
+    private let lock = NSLock()
+    private var _cancelled = false
+    var cancelled: Bool { lock.withLock { _cancelled } }
+    func cancel() {
+        lock.withLock { _cancelled = true }
+        if process.isRunning { process.terminate() }
     }
 }

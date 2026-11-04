@@ -14,11 +14,15 @@ enum SelfTest {
         chunkTests()
         guardTests()
         await historyTests()
+        await hedgeTests()
         if includeAI {
             await speechTests()
             await cleanupTests(provider: .apple)
         }
-        for provider in cloud { await cleanupTests(provider: provider) }
+        for provider in cloud {
+            await cleanupTests(provider: provider)
+            await hedgeLiveTest(provider: provider)
+        }
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         return failures == 0 ? 0 : 1
     }
@@ -151,6 +155,45 @@ enum SelfTest {
     }
 
     // MARK: Speech (uses `say` to make audio)
+
+    /// A slow AI call gets a second try; the first answer wins; quick failures and hangs end fast.
+    static func hedgeTests() async {
+        actor Calls { var n = 0; func next() -> Int { n += 1; return n } }
+        func timed(_ hedge: Double, _ giveUp: Double, _ attempt: @escaping @Sendable (Int) async throws -> String)
+            async -> (String?, Double, Int) {
+            let calls = Calls(), start = Date()
+            let out = try? await Cleaner.hedged(.claude, hedgeAfter: hedge, giveUpAfter: giveUp) {
+                try await attempt(await calls.next())
+            }
+            return (out, Date().timeIntervalSince(start), await calls.n)
+        }
+        var r = await timed(0.3, 2) { _ in "fast" }
+        check("hedge: a quick answer is used, no second call", r.0 == "fast" && r.2 == 1, "\(r)")
+        r = await timed(0.3, 2) { n in
+            if n == 1 { try await Task.sleep(for: .seconds(1.5)) }
+            return "call \(n)"
+        }
+        check("hedge: a slow call gets a second try that wins", r.0 == "call 2" && r.1 < 0.9, "\(r)")
+        r = await timed(0.3, 2) { _ in throw CleanError.toolFailed(.claude, "Not logged in") }
+        check("hedge: a quick failure stops at once", r.0 == nil && r.1 < 0.2 && r.2 == 1, "\(r)")
+        r = await timed(0.2, 0.6) { _ in try await Task.sleep(for: .seconds(5)); return "late" }
+        check("hedge: gives up at the limit", r.0 == nil && r.1 < 1.0 && r.2 == 2, "\(r)")
+    }
+
+    /// Two real calls at once: the first answer is used and the other tool is stopped.
+    static func hedgeLiveTest(provider: Provider) async {
+        guard Cleaner.isAvailable(provider) else { return }
+        let instructions = Mode.dictation.instructions(words: [], fixNames: true)
+        let out = try? await Cleaner.hedged(provider, hedgeAfter: 0, giveUpAfter: 60) {
+            try await Cleaner.ask(provider, prompt: "<transcript>um so this is a test</transcript>", instructions: instructions)
+        }
+        try? await Task.sleep(for: .seconds(1))
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let children = await Cleaner.runCommand(URL(fileURLWithPath: "/usr/bin/pgrep"), ["-P", "\(pid)"], timeout: 5)
+        check("hedge \(provider.rawValue): two calls race, the slower one is stopped",
+              out?.isEmpty == false && children.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              "out=\(out ?? "nil") children=\(children.stdout)")
+    }
 
     static func speechTests() async {
         let dir = FileManager.default.temporaryDirectory

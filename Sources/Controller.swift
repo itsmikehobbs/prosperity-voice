@@ -195,6 +195,7 @@ final class Controller: ObservableObject {
             panel.showWorking(provider.isCloud ? "Cleaning up with \(provider.name)…" : "Cleaning up…")
         }
         let result: CleanResult
+        let cleanStart = Date()
         if early.isEmpty {
             let fixed = Settings.applyReplacements(raw, Settings.replacements)
             result = await Cleaner.cleanDictation(fixed, engine: engine, words: Settings.customWords)
@@ -205,7 +206,7 @@ final class Controller: ObservableObject {
 
         let focus = Inserter.describeFocus()
         let outcome = await Inserter.insert(result.text)
-        Log.write("deliver words=\(Cleaner.wordCount(raw))→\(Cleaner.wordCount(result.text)) engine=\(result.engine) early=\(early.count) note=\(result.note ?? "-") outcome=\(outcome) focus=[\(focus)]")
+        Log.write("deliver words=\(Cleaner.wordCount(raw))→\(Cleaner.wordCount(result.text)) engine=\(result.engine) early=\(early.count) cleanup=\(String(format: "%.1f", Date().timeIntervalSince(cleanStart)))s note=\(result.note ?? "-")\(result.why.map { " why=\($0)" } ?? "") outcome=\(outcome) focus=[\(focus)]")
         entry.text = result.text
         entry.engine = result.engine
         entry.pasted = outcome == .pasted
@@ -244,7 +245,7 @@ final class Controller: ObservableObject {
         let engines = Set(parts.map(\.engine))
         return CleanResult(text: parts.map(\.text).joined(separator: " "),
                            engine: engines.count == 1 ? engines.first! : "mixed",
-                           note: parts.compactMap(\.note).first)
+                           note: parts.compactMap(\.note).first, why: parts.compactMap(\.why).first)
     }
 
     private func resetEarlyCleanup() {
