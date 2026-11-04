@@ -13,7 +13,7 @@ the AI you already pay for (Claude, ChatGPT, or Grok), or Apple's free AI on a M
 
 New to this? Follow the step-by-step guide: **[SETUP.md](SETUP.md)**.
 
-Open Claude Code (the **Code** part of the Claude desktop app) or the Codex app, and paste the
+Open Claude Code (the **Code** part of the Claude desktop app) or Codex (in the ChatGPT desktop app), and paste the
 message below. It does the whole install; you only click Allow on a few permission prompts. It
 asks which AI you want for cleanup:
 

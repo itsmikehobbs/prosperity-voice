@@ -9,8 +9,8 @@ Rules for agents:
   commands.** The user should only have to click (permission prompts, installers, settings).
 - **If you can't run shell commands** (for example a chat app that can only see or click on the
   screen), don't hand the user commands to paste. Stop and tell them, in plain words: "I can't
-  install this from here. Open the Claude desktop app and switch to **Code** (or open the **Codex**
-  app), then paste the same message: Install this for me:
+  install this from here. Open the Claude desktop app and switch to **Code** (or open the ChatGPT
+  desktop app and pick **Codex**), then paste the same message: Install this for me:
   https://github.com/itsmikehobbs/prosperity-voice". Those can run the install for them.
 - Run each command and read its output before going to the next step. Stop on an error, explain it
   in plain words, and fix it or tell the user what they must do.

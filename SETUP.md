@@ -14,8 +14,9 @@ Windows. You only need to click a few things.
   - a Windows 10 or 11 PC.
 - **A microphone.** A laptop's built-in mic works fine.
 - **An AI assistant that can work on your computer**, to install the app for you: **Claude Code**
-  (the **Code** part of the Claude desktop app) or the **Codex** app (from ChatGPT). A regular AI
-  chat can't install apps, so it would ask you to type commands yourself.
+  (the **Code** part of the Claude desktop app) or **Codex** (part of the ChatGPT desktop app). A
+  regular chat (or ChatGPT's Work) can't install apps, so it would ask you to type commands
+  yourself.
 - **An AI to clean up your words.** You pick one during setup:
 
 | Choice | What you need | Cost |
@@ -32,8 +33,9 @@ You never need to open Terminal or type commands. Your AI does that part.
 
 - **If you use Claude:** open the Claude desktop app and switch from **Chat** to **Code** at the
   top. Don't have the app? Download it from https://claude.com/download and sign in.
-- **If you use ChatGPT:** open the Codex app. Don't have it? Get it from
-  https://developers.openai.com/codex and sign in with your ChatGPT account.
+- **If you use ChatGPT:** open the ChatGPT desktop app and pick **Codex** from the menu at the top
+  left (not Chat or Work). Don't have the app? Download it from https://chatgpt.com/download and
+  sign in.
 
 If it asks you to pick a folder, pick your **Documents** folder.
 
@@ -55,7 +57,7 @@ If your AI asks for permission to run commands, click **Allow** (or **Yes**). It
 app's code and builds the app on your own computer.
 
 If your AI asks you to open Terminal and paste a command, you're in a regular chat. Go back to
-Step 1 and use **Code** (or the Codex app) instead.
+Step 1 and use **Code** (or **Codex** in ChatGPT) instead.
 
 ## Step 3: The clicks only you can do
 
