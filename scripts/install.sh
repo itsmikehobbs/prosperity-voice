@@ -60,7 +60,8 @@ cat <<'MSG'
 ==> Done. Prosperity Voice is in /Applications and running (waveform icon in the menu bar).
 One-time steps only you can do:
   1. When macOS asks, allow Prosperity Voice to use the Microphone.
-  2. System Settings → Privacy & Security → Accessibility: turn on Prosperity Voice.
+  2. In System Settings, the Accessibility list: turn on Prosperity Voice. (An AI agent can
+     open it with: open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
      (It needs this to see the Fn key and paste. If it's already on but Fn does nothing,
      remove it with the minus button, then add it back.)
 Then click in any text box, hold Fn, talk, and let go.

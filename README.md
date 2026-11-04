@@ -13,8 +13,9 @@ the AI you already pay for (Claude, ChatGPT, or Grok), or Apple's free AI on a M
 
 New to this? Follow the step-by-step guide: **[SETUP.md](SETUP.md)**.
 
-Give your AI agent (Claude Code, Codex, or any coding agent) the link and ask it to install it.
-It asks which AI you want for cleanup:
+Open Claude Code (the **Code** part of the Claude desktop app) or the Codex app, and paste the
+message below. It does the whole install; you only click Allow on a few permission prompts. It
+asks which AI you want for cleanup:
 
 > Install this for me: https://github.com/itsmikehobbs/prosperity-voice
 

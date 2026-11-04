@@ -98,8 +98,8 @@ Full self-test by hand, including Claude:
 
 Signing uses a local self-signed identity in `.signing/` (gitignored, created on first build)
 so macOS keeps the Microphone and Accessibility permissions across rebuilds. If Fn stops
-working after an update, remove Prosperity Voice from System Settings → Privacy & Security →
-Accessibility and add it back.
+working after an update, remove Prosperity Voice from the Accessibility list in System Settings
+and add it back.
 
 Test hooks (simulated keys, window, status) are off by default. Turn on only for testing:
 `defaults write tv.mikehobbs.prosperityvoice debugHooks -bool true`, and relaunch.

@@ -5,6 +5,13 @@ for the user's computer in order. The app is built on the user's own computer fr
 code, so there is no download to trust and no "unknown developer" warning.
 
 Rules for agents:
+- **You run every command yourself. Never ask the user to open Terminal or PowerShell and paste
+  commands.** The user should only have to click (permission prompts, installers, settings).
+- **If you can't run shell commands** (for example a chat app that can only see or click on the
+  screen), don't hand the user commands to paste. Stop and tell them, in plain words: "I can't
+  install this from here. Open the Claude desktop app and switch to **Code** (or open the **Codex**
+  app), then paste the same message: Install this for me:
+  https://github.com/itsmikehobbs/prosperity-voice". Those can run the install for them.
 - Run each command and read its output before going to the next step. Stop on an error, explain it
   in plain words, and fix it or tell the user what they must do.
 - Some steps need the user to click something (permission prompts, installers). Tell them exactly
@@ -54,17 +61,19 @@ Needs: a Mac with Apple Silicon (M1 or newer) and macOS 27 or newer.
    (the user's choice from "Cleanup AI choices"; leave `--cleanup` off for an update).
    It checks the Mac, builds the app, runs its self-test, installs it to `/Applications`, and
    starts it. The first build takes a minute or two. It ends with "Done".
-5. **Permissions (the user does these once).** Tell the user:
+5. **Permissions (the user does these once).** Open each settings page for them, one at a time,
+   and tell them what to click:
    - When macOS asks, click **Allow** for the Microphone.
-   - Open **System Settings > Privacy & Security > Accessibility** and turn on **Prosperity Voice**.
-     It needs this to notice the Fn key and to paste.
-   - Open **System Settings > Keyboard** and set **Press Globe (fn) key to** to **Do Nothing**, so macOS
-     doesn't open emoji or its own dictation when they hold Fn.
+   - Run `open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"`
+     and tell them to turn on **Prosperity Voice**. It needs this to notice the Fn key and to paste.
+   - Run `open "x-apple.systempreferences:com.apple.Keyboard-Settings.extension"` and tell them to
+     set **Press Globe (fn) key to** to **Do Nothing**, so macOS doesn't open emoji or its own
+     dictation when they hold Fn.
 6. **Cleanup AI.** Check the chosen AI is logged in (see "Cleanup AI choices"), and tell the user
    which AI cleans up their text and that they can change it in Settings.
-7. **Optional: better Apple cleanup.** If the user wants the free Apple option to be stronger, run
-   `open ~/prosperity-voice/ios/"Prosperity Voice Helper.shortcut"` and tell them to click
-   **Add Shortcut**. This lets the app use Apple's Private Cloud model. Only matters for Apple.
+7. **Better Apple cleanup (only if they chose Apple).** Run
+   `open ~/prosperity-voice/ios/"Prosperity Voice Helper.shortcut"` yourself and tell them to click
+   **Add Shortcut**. This lets the app use Apple's stronger Private Cloud model.
 8. **Test (the user does this; an agent can't).** Tell the user: click in any text box, hold **Fn**, say a sentence, let go. The
    cleaned-up text appears. A waveform icon in the menu bar has Settings and History.
 
