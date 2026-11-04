@@ -22,8 +22,13 @@ static class SelfTest
         GestureTests();
         TextTests();
         HistoryTests();
+        await HedgeTests();
         if (includeSpeech) await SpeechTests();
-        foreach (var p in cloud) await CleanupTests(p);
+        foreach (var p in cloud)
+        {
+            await CleanupTests(p);
+            await HedgeLiveTest(p);
+        }
         var summary = failures == 0 ? "ALL PASSED" : $"{failures} FAILED";
         Console.WriteLine("\n" + summary);
         lines.Add(summary);
@@ -193,6 +198,52 @@ static class SelfTest
     }
 
     // MARK: Cleanup
+
+    // MARK: Asking again when the AI is slow
+
+    /// <summary>A slow AI call gets a second try; the first answer wins; quick failures and hangs end fast.</summary>
+    static async Task HedgeTests()
+    {
+        async Task<(string? Out, double Secs, int Calls)> Timed(double hedge, double giveUp, Func<int, CancellationToken, Task<string>> attempt)
+        {
+            var calls = 0;
+            var sw = Stopwatch.StartNew();
+            string? output = null;
+            try { output = await Cleaner.Hedged(Provider.Claude, hedge, giveUp, ct => attempt(Interlocked.Increment(ref calls), ct)); }
+            catch { }
+            return (output, sw.Elapsed.TotalSeconds, calls);
+        }
+        var r = await Timed(0.3, 2, (_, _) => Task.FromResult("fast"));
+        Check("hedge: a quick answer is used, no second call", r.Out == "fast" && r.Calls == 1, r.ToString());
+        r = await Timed(0.3, 2, async (n, ct) =>
+        {
+            if (n == 1) await Task.Delay(1500, ct);
+            return $"call {n}";
+        });
+        Check("hedge: a slow call gets a second try that wins", r.Out == "call 2" && r.Secs < 0.9, r.ToString());
+        r = await Timed(0.3, 2, (_, _) => throw new CleanException("Claude cleanup failed: Not logged in"));
+        Check("hedge: a quick failure stops at once", r.Out == null && r.Secs < 0.2 && r.Calls == 1, r.ToString());
+        r = await Timed(0.2, 0.6, async (_, ct) => { await Task.Delay(5000, ct); return "late"; });
+        Check("hedge: gives up at the limit", r.Out == null && r.Secs < 1.0 && r.Calls == 2, r.ToString());
+    }
+
+    /// <summary>Two real calls at once: the first answer is used and the other tool is stopped.</summary>
+    static async Task HedgeLiveTest(Provider provider)
+    {
+        if (!Cleaner.IsAvailable(provider)) return;
+        var label = provider.ToString().ToLowerInvariant();
+        string? output = null;
+        try
+        {
+            var instructions = Cleaner.Instructions(Mode.Dictation, []);
+            output = await Cleaner.Hedged(provider, 0, 60,
+                ct => Cleaner.Ask(provider, "<transcript>um so this is a test</transcript>", instructions, ct));
+        }
+        catch (Exception e) { output = null; Check($"hedge {label}: call", false, e.Message); }
+        await Task.Delay(1000);
+        Check($"hedge {label}: two calls race, the slower one is stopped",
+              !string.IsNullOrEmpty(output) && Cleaner.RunningTools == 0, $"out={output} running={Cleaner.RunningTools}");
+    }
 
     static async Task CleanupTests(Provider provider)
     {

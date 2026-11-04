@@ -187,12 +187,13 @@ public sealed class Controller
         var provider = EngineInfo.ProviderOf(engine);
         if (provider != null) panel.ShowWorking($"Cleaning up with {ProviderInfo.Name(provider.Value)}…");
         var fixedText = Settings.ApplyReplacements(raw, settings.Replacements);
+        var cleanTimer = System.Diagnostics.Stopwatch.StartNew();
         var result = await Cleaner.CleanDictation(fixedText, engine, settings.Words);
         if (token != session) return;
 
         var focus = Inserter.DescribeFocus();
         var outcome = await Inserter.Insert(result.Text);
-        Log.Write($"deliver words={Cleaner.WordCount(raw)}→{Cleaner.WordCount(result.Text)} engine={result.Engine} note={result.Note ?? "-"} outcome={outcome} focus=[{focus}]");
+        Log.Write($"deliver words={Cleaner.WordCount(raw)}→{Cleaner.WordCount(result.Text)} engine={result.Engine} cleanup={cleanTimer.Elapsed.TotalSeconds:0.0}s note={result.Note ?? "-"} outcome={outcome} focus=[{focus}]");
         if (keep)
             history.Update(entry.Id, e => { e.Text = result.Text; e.Engine = result.Engine; e.Pasted = outcome == Inserter.Outcome.Pasted; });
 

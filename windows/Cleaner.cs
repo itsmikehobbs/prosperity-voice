@@ -96,7 +96,7 @@ public static class Cleaner
         async Task<string> CleanPiece(string piece)
         {
             var wrapped = $"<{Tag(mode)}>{piece}</{Tag(mode)}>";
-            var raw = await Ask(provider, wrapped, instructions);
+            var raw = await AskHedged(provider, wrapped, instructions);
             var output = CapitalizeFirst(Tidy(raw, Tag(mode)));
             if (!Accepts(mode, piece, output) || AddedNames(piece, output, words).Count > 0)
                 throw CleanException.Rejected();
@@ -126,17 +126,69 @@ public static class Cleaner
 
     // MARK: Engines
 
-    public static Task<string> Ask(Provider provider, string prompt, string instructions) => provider switch
+    public static Task<string> Ask(Provider provider, string prompt, string instructions, CancellationToken ct = default) => provider switch
     {
-        Provider.Claude => Claude(prompt, instructions),
-        Provider.ChatGPT => ChatGPT(prompt, instructions),
-        _ => Grok(prompt, instructions),
+        Provider.Claude => Claude(prompt, instructions, ct),
+        Provider.ChatGPT => ChatGPT(prompt, instructions, ct),
+        _ => Grok(prompt, instructions, ct),
     };
+
+    /// <summary>The AI tools usually answer in 2 to 6 seconds, but a call sometimes stalls for 20 to
+    /// 30 (a busy server, or the tool retrying). If the first call is slow, start a second one and use
+    /// whichever answers first; the other is stopped. Give up at the hard limit.
+    /// Seen 2026-11-04: Claude took 21 and 33 seconds for 70 to 80 words.</summary>
+    public static Task<string> AskHedged(Provider provider, string prompt, string instructions)
+    {
+        double words = WordCount(prompt);
+        return Hedged(provider, 7.0 + words / 40, 25.0 + words / 15,
+            ct => Ask(provider, prompt, instructions, ct));
+    }
+
+    /// <summary>The racing behind AskHedged, separate so the self-test can drive it with fake calls.</summary>
+    public static async Task<string> Hedged(Provider provider, double hedgeAfter, double giveUpAfter,
+                                            Func<CancellationToken, Task<string>> attempt)
+    {
+        using var cts = new CancellationTokenSource();
+        var started = Stopwatch.StartNew();
+        var first = Task.Run(() => attempt(cts.Token));
+        var second = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(hedgeAfter), cts.Token);
+            Log.Write($"cleanup slow: {ProviderInfo.Name(provider)} asked again after {(int)hedgeAfter}s");
+            return await attempt(cts.Token);
+        });
+        var deadline = Task.Delay(TimeSpan.FromSeconds(giveUpAfter), cts.Token);
+        var pending = new List<Task> { first, second, deadline };
+        try
+        {
+            var failures = 0;
+            while (true)
+            {
+                var done = await Task.WhenAny(pending);
+                pending.Remove(done);
+                if (done == deadline)
+                    throw new CleanException($"{ProviderInfo.Name(provider)} cleanup failed: timed out after {(int)giveUpAfter}s");
+                var call = (Task<string>)done;
+                if (call.IsCompletedSuccessfully) return call.Result;
+                failures++;
+                // A quick failure (not logged in, missing tool) won't fix itself: stop now.
+                // After the second call has started, wait for it.
+                var secondRunning = started.Elapsed.TotalSeconds >= hedgeAfter && failures < 2;
+                if (!secondRunning) await call;   // rethrows its error
+            }
+        }
+        finally
+        {
+            cts.Cancel();   // stops the slower call's tool and the timers
+            foreach (var t in new Task[] { first, second, deadline })
+                _ = t.ContinueWith(x => _ = x.Exception, TaskScheduler.Default);   // observe leftover errors
+        }
+    }
 
     /// <summary>Claude Code (`claude -p`) with every extra turned off: no tools, MCP, settings, or
     /// memory. Instructions go in a file and the text through standard input, because Windows
     /// mangles long multi-line command arguments.</summary>
-    static async Task<string> Claude(string prompt, string instructions)
+    static async Task<string> Claude(string prompt, string instructions, CancellationToken ct)
     {
         var sp = TempFile("system", instructions);
         try
@@ -149,14 +201,14 @@ public static class Cleaner
                 "--strict-mcp-config", "--mcp-config", "{\"mcpServers\":{}}",
                 "--setting-sources", "",
                 "--no-session-persistence",
-            ], stdin: prompt, timeoutWords: WordCount(prompt));
+            ], stdin: prompt, timeoutWords: WordCount(prompt), ct: ct);
         }
         finally { TryDelete(sp); }
     }
 
     /// <summary>Codex (`codex exec`): read-only sandbox, empty folder, no saved session, user config
     /// and rules skipped. The whole prompt goes through standard input ("-").</summary>
-    static async Task<string> ChatGPT(string prompt, string instructions)
+    static async Task<string> ChatGPT(string prompt, string instructions, CancellationToken ct)
     {
         var outFile = Path.Combine(Paths.AiOutput, $"{Guid.NewGuid()}.txt");
         try
@@ -168,7 +220,7 @@ public static class Cleaner
                 "--sandbox", "read-only", "-C", Paths.AiWorkdir,
                 "-m", ProviderInfo.ChatGPTModel, "-c", "model_reasoning_effort=low", "-c", "service_tier=fast",
                 "-o", outFile, "-",
-            ], stdin: full, outputFile: outFile, timeoutWords: WordCount(prompt));
+            ], stdin: full, outputFile: outFile, timeoutWords: WordCount(prompt), ct: ct);
         }
         finally { TryDelete(outFile); }
     }
@@ -176,7 +228,7 @@ public static class Cleaner
     /// <summary>xAI's own Grok tool, single turn, with tools, web search, subagents, and planning
     /// off. It ignores --system-prompt-override on a grok.com login, so the instructions go first in
     /// the prompt, from a file, sent verbatim.</summary>
-    static async Task<string> Grok(string prompt, string instructions)
+    static async Task<string> Grok(string prompt, string instructions, CancellationToken ct)
     {
         var full = instructions + "\n- Never run commands, use tools, or read files.\n\n" + prompt;
         var promptFile = TempFile("grok", full);
@@ -188,7 +240,7 @@ public static class Cleaner
                 "--model", ProviderInfo.GrokModel, "--reasoning-effort", "low",
                 "--tools", "", "--disable-web-search", "--no-subagents", "--no-plan", "--max-turns", "1",
                 "--cwd", Paths.AiWorkdir,
-            ], stdin: null, timeoutWords: WordCount(prompt));
+            ], stdin: null, timeoutWords: WordCount(prompt), ct: ct);
         }
         finally { TryDelete(promptFile); }
     }
@@ -266,8 +318,12 @@ public static class Cleaner
             .Select(d => Path.Combine(d, file)).FirstOrDefault(File.Exists);
 
     /// <summary>Run one of the AI command-line tools and return its answer (stdout, or outputFile).</summary>
+    /// <summary>Number of AI tools running right now (the self-test checks a stopped call ends).</summary>
+    public static int RunningTools => runningTools;
+    static int runningTools;
+
     static async Task<string> RunTool(Provider provider, string[] args, string? stdin, int timeoutWords,
-                                      string? outputFile = null)
+                                      string? outputFile = null, CancellationToken ct = default)
     {
         var tool = FindTool(provider) ?? throw new CleanException(
             $"Couldn't find the {ProviderInfo.Tool(provider)} command-line tool for {ProviderInfo.Name(provider)}.");
@@ -299,29 +355,36 @@ public static class Cleaner
             foreach (var a in tool.Prefix.Concat(args)) psi.ArgumentList.Add(a);
         }
 
+        ct.ThrowIfCancellationRequested();
         using var p = new Process { StartInfo = psi };
         try { p.Start(); }
         catch (Exception e) { throw new CleanException($"{ProviderInfo.Name(provider)} cleanup failed: {e.Message}"); }
-
-        var outTask = p.StandardOutput.ReadToEndAsync();
-        var errTask = p.StandardError.ReadToEndAsync();
-        if (stdin != null) await p.StandardInput.WriteAsync(stdin);
-        p.StandardInput.Close();
-
-        using var cts = new CancellationTokenSource(timeout);
-        try { await p.WaitForExitAsync(cts.Token); }
-        catch (OperationCanceledException)
+        Interlocked.Increment(ref runningTools);
+        try
         {
-            try { p.Kill(entireProcessTree: true); } catch { }
-            throw new CleanException($"{ProviderInfo.Name(provider)} cleanup failed: timed out");
+            var outTask = p.StandardOutput.ReadToEndAsync();
+            var errTask = p.StandardError.ReadToEndAsync();
+            if (stdin != null) await p.StandardInput.WriteAsync(stdin);
+            p.StandardInput.Close();
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(timeout);
+            try { await p.WaitForExitAsync(cts.Token); }
+            catch (OperationCanceledException)
+            {
+                try { p.Kill(entireProcessTree: true); } catch { }
+                ct.ThrowIfCancellationRequested();   // stopped on purpose (a faster call won)
+                throw new CleanException($"{ProviderInfo.Name(provider)} cleanup failed: timed out");
+            }
+            var stdout = await outTask;
+            var stderr = await errTask;
+            var answer = outputFile != null && File.Exists(outputFile) ? File.ReadAllText(outputFile) : stdout;
+            answer = answer.Trim();
+            if (p.ExitCode == 0 && answer.Length > 0) return answer;
+            var why = stderr.Trim().Length > 0 ? stderr.Trim() : answer;
+            throw new CleanException($"{ProviderInfo.Name(provider)} cleanup failed: {Tail(why, 200)}");
         }
-        var stdout = await outTask;
-        var stderr = await errTask;
-        var answer = outputFile != null && File.Exists(outputFile) ? File.ReadAllText(outputFile) : stdout;
-        answer = answer.Trim();
-        if (p.ExitCode == 0 && answer.Length > 0) return answer;
-        var why = stderr.Trim().Length > 0 ? stderr.Trim() : answer;
-        throw new CleanException($"{ProviderInfo.Name(provider)} cleanup failed: {Tail(why, 200)}");
+        finally { Interlocked.Decrement(ref runningTools); }
     }
 
     static string QuoteForCmd(string a) =>
