@@ -61,6 +61,10 @@ its own. Apple's AI only uses it for spelling (in testing it swapped ordinary wo
 
 `ios/Prosperity Voice.shortcut` is a no-install iPhone version: press the Action Button, talk, tap to
 stop, and Apple Intelligence cleans it up and copies it to the clipboard (no auto-paste on iPhone).
+It records first (Record Audio, stop on tap) and then runs Transcribe Audio, because Dictate Text
+cut off long dictations. Tested 2026-11-04 on the Mac: Transcribe Audio turned a 4-minute recording
+into text in 4 s, and the full chain cleaned a 2-minute, 414-word dictation in 5 s with every item
+kept. (Before this date the shortcut was built without its cleanup instructions; fixed.)
 Built by `ios/build_shortcut.py` from `ios/cleanup-instructions.txt`, which is the Mac app's own
 Apple cleanup instructions (refresh it with `ProsperityVoice --print-instructions apple`), so both
 stay in sync. Cleanup is Apple's "Use Model" action (defaults to Private Cloud

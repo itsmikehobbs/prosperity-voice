@@ -1,8 +1,10 @@
 """Builds the iPhone "Prosperity Voice" shortcut (and a text-input test version).
 
 Run: python3 build_shortcut.py && shortcuts sign --mode anyone --input "Prosperity Voice.wflow" --output "Prosperity Voice.shortcut"
-Steps: Dictate Text (stop on tap) -> Use Model (Apple Intelligence, Private Cloud Compute by default)
--> Copy to Clipboard -> Show Notification. "PV Cleanup Test" takes text input instead of dictation,
+Steps: Record Audio (starts at once, stops on tap) -> Transcribe Audio -> Use Model (Apple
+Intelligence, Private Cloud Compute by default) -> Copy to Clipboard -> Show Notification.
+No time limit: Dictate Text cut off long dictations, so this records first and then transcribes
+(Transcribe Audio handled a 4-minute recording in 4 s in testing, 2026-11-04). "PV Cleanup Test" takes text input instead of dictation,
 for testing the prompt with: shortcuts run "PV Cleanup Test" -i in.txt -o out.txt
 """
 import plistlib, uuid, sys
@@ -18,10 +20,14 @@ def out_ref(u,name): return {"Type":"ActionOutput","OutputUUID":u,"OutputName":n
 def build(name, dictate):
     acts=[]; src={"Type":"ExtensionInput"}
     if dictate:
-        ud=str(uuid.uuid4()).upper()
-        acts.append({"WFWorkflowActionIdentifier":"is.workflow.actions.dictatetext",
-                     "WFWorkflowActionParameters":{"UUID":ud,"WFDictateTextStopListening":"On Tap","WFSpeechLanguage":"en-US"}})
-        src=out_ref(ud,"Dictated Text")
+        ur=str(uuid.uuid4()).upper(); ut=str(uuid.uuid4()).upper()
+        acts.append({"WFWorkflowActionIdentifier":"is.workflow.actions.recordaudio",
+                     "WFWorkflowActionParameters":{"UUID":ur,"WFRecordingStart":"Immediately","WFRecordingEnd":"On Tap",
+                                                   "WFRecordingCompression":"Normal"}})
+        acts.append({"WFWorkflowActionIdentifier":"com.apple.ShortcutsActions.TranscribeAudioAction",
+                     "WFWorkflowActionParameters":{"UUID":ut,"audioFile":{"Value":out_ref(ur,"Recorded Audio"),
+                                                                          "WFSerializationType":"WFTextTokenAttachment"}}})
+        src=out_ref(ut,"Transcribed Audio")
     ul=str(uuid.uuid4()).upper()
     p=PROMPT
     acts.append({"WFWorkflowActionIdentifier":"is.workflow.actions.askllm",
@@ -42,9 +48,11 @@ def build(name, dictate):
         "WFWorkflowActions":acts}
     plistlib.dump(wf, open(name+".wflow","wb"), fmt=plistlib.FMT_BINARY)
 build(os.environ.get("TEST_NAME", "PV Cleanup Test"), False)
+build("Prosperity Voice", True)
 # Mac helper: a plain pipe to Apple's Private Cloud Compute model. The Mac app sends the whole
 # prompt (its own instructions + text) as input, since apps can't call that model directly
 # without a paid developer entitlement.
 PROMPT = OBJ
 build("Prosperity Voice Helper", False)
-build("Prosperity Voice", True)
+# (Build "Prosperity Voice" above, before PROMPT is replaced: built after this line, it had no
+# cleanup instructions at all.)

@@ -126,6 +126,24 @@ Paste this into your AI assistant:
 Uninstall this for me: https://github.com/itsmikehobbs/prosperity-voice
 ```
 
+## iPhone
+
+The iPhone version is a Shortcut. It doesn't need an AI assistant or a computer.
+
+**You need:** an iPhone 15 Pro or newer, with Apple Intelligence turned on (Settings > Apple
+Intelligence & Siri).
+
+1. On the iPhone, open this link in Safari:
+   https://github.com/itsmikehobbs/prosperity-voice/raw/main/ios/Prosperity%20Voice.shortcut
+2. Tap the file that downloads. The Shortcuts app opens. Tap **Add Shortcut**.
+3. Open **Settings > Action Button**, pick **Shortcut**, and choose **Prosperity Voice**.
+
+**To use it:** press the Action Button and talk. There's no time limit. Tap **Stop** when you're
+done. A second or two later your cleaned-up words are copied. Tap in any text box and paste.
+
+The first time, the iPhone asks to let the shortcut use the microphone and speech recognition.
+Tap **Allow**.
+
 ## Privacy and cost
 
 - **Your voice stays on your computer.** It is turned into text there.

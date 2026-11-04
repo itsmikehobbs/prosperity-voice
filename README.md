@@ -62,8 +62,9 @@ company's own tool on your account. History is saved only on your computer and c
 
 ## iPhone
 
-`ios/Prosperity Voice.shortcut` is a no-install iPhone version using Apple Intelligence: press the
-Action Button, talk, tap to stop, and the cleaned-up text is copied.
+A no-install iPhone version using Apple Intelligence: press the Action Button, talk as long as you
+like, tap to stop, and the cleaned-up text is copied. Needs an iPhone 15 Pro or newer with Apple
+Intelligence on. Setup steps: [SETUP.md](SETUP.md#iphone).
 
 ## License
 
