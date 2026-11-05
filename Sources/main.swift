@@ -53,6 +53,49 @@ if let i = args.firstIndex(of: "--set-cleanup") {
     print("Cleanup set to \(engine.label)")
     exit(0)
 }
+if let i = args.firstIndex(of: "--bench"), args.count > i + 2 {
+    // Debug helper: compare the cleanup AIs on the same dictations.
+    //   ProsperityVoice --bench in.json out.json [words]
+    // in.json is [{"id": "...", "text": "..."}]. Each text goes through Claude, Apple's cloud model
+    // (the helper shortcut), and Apple's on-device model, the same way a dictation does (same
+    // instructions, tidy and guards). Pass "words" to use this Mac's Words to spell right.
+    // Writes [{"id", "engine", "output", "seconds", "accepted", "error"}].
+    let inURL = URL(fileURLWithPath: args[i + 1]), outURL = URL(fileURLWithPath: args[i + 2])
+    let words = args.contains("words") ? Settings.customWords : []
+    Task {
+        let samples = (try? JSONSerialization.jsonObject(with: Data(contentsOf: inURL))) as? [[String: String]] ?? []
+        var results: [[String: Any]] = []
+        for sample in samples {
+            let text = sample["text"] ?? ""
+            let engines: [(String, Bool, (String, String) async throws -> String)] = [
+                ("claude", true, { p, ins in try await Cleaner.claude(p, instructions: ins) }),
+                ("apple-cloud", false, { p, ins in try await Cleaner.appleCloud(ins + "\n\n" + p) }),
+                ("apple-device", false, { p, ins in try await Cleaner.appleOnDevice(p, instructions: ins) }),
+            ]
+            for (name, fixNames, call) in engines {
+                let instructions = Mode.dictation.instructions(words: words, fixNames: fixNames)
+                let started = Date()
+                var row: [String: Any] = ["id": sample["id"] ?? "", "engine": name]
+                do {
+                    let raw = try await call("<transcript>\(text)</transcript>", instructions)
+                    let out = Cleaner.capitalizeFirst(Cleaner.tidy(raw, tag: "transcript"))
+                    row["output"] = out
+                    row["accepted"] = Mode.dictation.accepts(input: text, output: out)
+                        && Cleaner.addedNames(input: text, output: out, allowed: words).isEmpty
+                } catch {
+                    row["error"] = error.localizedDescription
+                    row["accepted"] = false
+                }
+                row["seconds"] = (Date().timeIntervalSince(started) * 10).rounded() / 10
+                results.append(row)
+                print("\(sample["id"] ?? "") \(name) \(row["seconds"]!)s accepted=\(row["accepted"]!)")
+            }
+        }
+        try? JSONSerialization.data(withJSONObject: results, options: [.prettyPrinted, .sortedKeys]).write(to: outURL)
+        exit(0)
+    }
+    RunLoop.main.run()
+}
 if args.contains("--print-instructions") {
     // Debug helper: the exact dictation instructions a cloud AI receives (for benchmarking models).
     // Add "apple" for the version Apple's model gets (spelling hint only, no name repair).

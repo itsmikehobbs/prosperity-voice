@@ -74,6 +74,25 @@ stay in sync. Cleanup is Apple's "Use Model" action (defaults to Private Cloud
 Compute; switch to On-Device in the shortcut for offline use). Tested on the Mac with text input:
 ~1 sec, passes the self-correction, question, request, garbled-words, and pronoun checks.
 
+### Comparing the cleanup AIs
+
+`ProsperityVoice --bench in.json out.json [words]` runs each dictation through Claude, Apple's cloud
+model (the helper shortcut), and Apple's on-device model, with the real instructions, tidy and
+guards, and records the output and time. Run 2026-11-04 (macOS 27.2) on 15 dictations (fillers,
+self-correction, questions, requests, pronouns, names, "new paragraph", numbers, garbled words,
+run-ons, a list, a text reply, 270 words, a prompt injection, casual speech):
+
+| | Claude Sonnet 5.5 | Apple cloud | Apple on-device |
+|---|---|---|---|
+| Clean, correct | 14 of 15 (1 small miss) | 12 of 15 (2 small misses, 1 empty reply) | 6 of 15 |
+| Typical time | 2.2 to 2.6 s (3.7 s long) | 1.1 to 1.4 s (2.5 s long) | 0.5 to 1.2 s (4 s long) |
+
+Claude was the only one to format numbers ($1,250), split the long dictation into paragraphs, and
+leave garbled words alone. Apple cloud matched it on everything else and was about twice as fast;
+it returned nothing for the prompt-injection test (the app then falls back, and the guard keeps the
+raw text). On-device invented words, missed self-corrections and "new paragraph", and answered the
+injection; the guard caught 3 of those.
+
 ### Apple cleanup on the Mac
 
 Apps can't call Apple's Private Cloud Compute model without a paid developer entitlement
