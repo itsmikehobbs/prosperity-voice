@@ -76,6 +76,12 @@ Needs: a Mac with Apple Silicon (M1 or newer) and macOS 27 or newer.
    **Add Shortcut**. This lets the app use Apple's stronger Private Cloud model.
 8. **Test (the user does this; an agent can't).** Tell the user: click in any text box, hold **Fn**, say a sentence, let go. The
    cleaned-up text appears. A waveform icon in the menu bar has Settings and History.
+9. **iPhone (ask first).** Ask the user if they have an iPhone 15 Pro or newer. If yes, run
+   `cd ~/prosperity-voice && scripts/iphone-shortcut.sh`. It builds the iPhone shortcut with their
+   "Words to spell right" and opens it in Shortcuts. Tell them to click **Add Shortcut** (or
+   **Replace**, if asked). It syncs to their iPhone through iCloud. Then, on the iPhone:
+   **Settings > Action Button > Shortcut > Prosperity Voice**. On an update, run it again so their
+   iPhone gets the new version too (if Shortcuts says **Keep Both**, choose **Replace**).
 
 If Fn does nothing: check Accessibility (step 5). If it's already on, remove Prosperity Voice from
 that list with the minus button, add it back from `/Applications`, and quit and reopen the app.

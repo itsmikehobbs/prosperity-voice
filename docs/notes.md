@@ -65,6 +65,9 @@ It records first (Record Audio, stop on tap) and then runs Transcribe Audio, bec
 cut off long dictations. Tested 2026-11-04 on the Mac: Transcribe Audio turned a 4-minute recording
 into text in 4 s, and the full chain cleaned a 2-minute, 414-word dictation in 5 s with every item
 kept. (Before this date the shortcut was built without its cleanup instructions; fixed.)
+`scripts/iphone-shortcut.sh` builds a personal copy on a Mac (the installed app's
+`--print-instructions apple`, so it has the user's word list), signs it, and opens it in Shortcuts;
+iCloud syncs it to the iPhone. On import over an existing one, Shortcuts asks Replace or Keep Both.
 Built by `ios/build_shortcut.py` from `ios/cleanup-instructions.txt`, which is the Mac app's own
 Apple cleanup instructions (refresh it with `ProsperityVoice --print-instructions apple`), so both
 stay in sync. Cleanup is Apple's "Use Model" action (defaults to Private Cloud

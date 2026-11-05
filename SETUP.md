@@ -132,6 +132,13 @@ Uninstall this for me: https://github.com/itsmikehobbs/prosperity-voice
 
 The iPhone version is a Shortcut. It doesn't need an AI assistant or a computer.
 
+**Easiest, if you also have a Mac:** when your AI installs Prosperity Voice on the Mac, it offers to
+put it on your iPhone too, with your own "Words to spell right". Click **Add Shortcut** on the Mac
+and it shows up on your iPhone. Already installed? Ask your AI: `Put Prosperity Voice on my
+iPhone: https://github.com/itsmikehobbs/prosperity-voice`
+
+**Without a Mac:**
+
 **You need:** an iPhone 15 Pro or newer, with Apple Intelligence turned on (Settings > Apple
 Intelligence & Siri).
 

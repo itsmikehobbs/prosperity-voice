@@ -13,7 +13,10 @@ OBJ="￼"
 #   ProsperityVoice --print-instructions apple > cleanup-instructions.txt)
 import os
 HERE = os.path.dirname(os.path.abspath(__file__))
-PROMPT = open(os.path.join(HERE, "cleanup-instructions.txt")).read().strip() + "\n\n<transcript>" + OBJ + "</transcript>"
+# PV_INSTRUCTIONS: a different instructions file (scripts/iphone-shortcut.sh passes the Mac app's
+# own, which includes the user's "Words to spell right"). PV_OUT: where to write the .wflow files.
+PROMPT = open(os.environ.get("PV_INSTRUCTIONS") or os.path.join(HERE, "cleanup-instructions.txt")).read().strip() + "\n\n<transcript>" + OBJ + "</transcript>"
+OUT = os.environ.get("PV_OUT", ".")
 assert all(ord(c) < 0x10000 for c in PROMPT), "Shortcuts text ranges are UTF-16; keep the prompt in the BMP"
 def tok(string, ranges): return {"Value":{"string":string,"attachmentsByRange":ranges},"WFSerializationType":"WFTextTokenString"}
 def out_ref(u,name): return {"Type":"ActionOutput","OutputUUID":u,"OutputName":name}
@@ -46,7 +49,7 @@ def build(name, dictate):
         "WFWorkflowIcon":{"WFWorkflowIconStartColor":4271458815,"WFWorkflowIconGlyphNumber":59792},
         "WFWorkflowInputContentItemClasses":["WFStringContentItem"],"WFWorkflowTypes":[] if dictate else [],
         "WFWorkflowActions":acts}
-    plistlib.dump(wf, open(name+".wflow","wb"), fmt=plistlib.FMT_BINARY)
+    plistlib.dump(wf, open(os.path.join(OUT, name+".wflow"),"wb"), fmt=plistlib.FMT_BINARY)
 build(os.environ.get("TEST_NAME", "PV Cleanup Test"), False)
 build("Prosperity Voice", True)
 # Mac helper: a plain pipe to Apple's Private Cloud Compute model. The Mac app sends the whole
