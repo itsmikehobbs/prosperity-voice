@@ -1,7 +1,7 @@
 # Prosperity Voice
 
 Hold a key, talk, let go: your words are cleaned up and pasted into whatever text box you're in.
-For Mac and Windows. No subscription to us: speech-to-text runs on your computer, and cleanup uses
+For Mac, Windows, iPhone, and Android. No subscription to us: speech-to-text runs on your computer, and cleanup uses
 the AI you already pay for (Claude, ChatGPT, or Grok), or Apple's free AI on a Mac.
 
 > **AI agents:** if your user gave you this link, they want Prosperity Voice installed (or updated,
@@ -65,6 +65,13 @@ company's own tool on your account. History is saved only on your computer and c
 A no-install iPhone version using Apple Intelligence: press the Action Button, talk as long as you
 like, tap to stop, and the cleaned-up text is copied. Needs an iPhone 15 Pro or newer with Apple
 Intelligence on. Setup steps: [SETUP.md](SETUP.md#iphone).
+
+## Android
+
+A keyboard app: switch to it in any app, tap the mic, talk as long as you like, tap again, and the
+cleaned-up words are typed. Speech-to-text runs on the phone (Whisper). Cleanup uses Gemini Nano on
+the phone (free, newer phones), Gemini with a free Google key, or Off. Android 10 or newer.
+Setup steps: [SETUP.md](SETUP.md#android).
 
 ## License
 

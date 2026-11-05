@@ -7,6 +7,8 @@ go. Your words appear in whatever box you're typing in (an email, a chat, a docu
 Your AI assistant installs it for you. It takes about 10 minutes on a Mac and about 15 minutes on
 Windows. You only need to click a few things.
 
+On a phone? Skip to [iPhone](#iphone) or [Android](#android). Phones install from a link.
+
 ## What you need
 
 - **A computer:**
@@ -143,6 +145,33 @@ done. A second or two later your cleaned-up words are copied. Tap in any text bo
 
 The first time, the iPhone asks to let the shortcut use the microphone and speech recognition.
 Tap **Allow**.
+
+## Android
+
+The Android version is a keyboard: in any app, switch to the Prosperity Voice keyboard, tap the
+mic, talk as long as you like, and tap again. Your cleaned-up words are typed for you. It doesn't
+need an AI assistant or a computer.
+
+**You need:** an Android 10 or newer phone, and about 400 MB of free space.
+
+1. On the phone, open this link in Chrome. It downloads the app:
+   https://github.com/itsmikehobbs/prosperity-voice/releases/latest/download/ProsperityVoice.apk
+2. Tap the downloaded file, then **Install**. If Android asks, allow Chrome to install apps
+   (**Settings**, turn on **Allow from this source**, then go back). If Google Play Protect warns
+   that it doesn't know the developer, tap **More details**, then **Install anyway**.
+3. Open **Prosperity Voice** and follow its three steps: allow the microphone, download the
+   speech model (about 150 MB, Wi-Fi recommended), and turn on the keyboard.
+4. Pick a cleanup AI in the app:
+   - **Gemini Nano**: free, on the phone, for newer phones that have it (recent Pixel and
+     Galaxy phones).
+   - **Gemini**: free key from Google. The app has a button to get one; paste it in.
+   - **Off**: types exactly what you said.
+
+**To use it:** tap in any text box, then switch to the Prosperity Voice keyboard (the keyboard
+button at the bottom of the screen). Tap the big blue button and talk. Tap it again when you're
+done. Use the keyboard key on the left to switch back to your normal keyboard.
+
+**To update:** open the link again and install. Your settings are kept.
 
 ## Privacy and cost
 

@@ -131,6 +131,12 @@ Uninstall: quit it (`Stop-Process -Name ProsperityVoice`), then delete
 the Start menu shortcut (`Prosperity Voice.lnk` in `[Environment]::GetFolderPath('Programs')`), and the
 `Prosperity Voice` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` if it exists.
 
+## iPhone and Android
+
+Nothing to build: phones install from a link. If the user wants it on a phone, send them to the
+steps in SETUP.md (https://github.com/itsmikehobbs/prosperity-voice/blob/main/SETUP.md#iphone or
+#android). The Android app's source is in `android/` (see docs/notes.md to build it).
+
 ## When you're done
 
 Tell the user, in plain words: it's installed, which key to hold, where the icon is, which AI

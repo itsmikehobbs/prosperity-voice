@@ -130,3 +130,32 @@ Test hooks (simulated keys, window, status) are off by default. Turn on only for
   app quits mid-recording, it unmutes at next launch.
 - A recording that never gets louder than -50 dBFS counts as silence (the log shows each
   recording's peak, useful if a quiet mic gets cut off).
+
+## Android version (`android/`)
+
+A keyboard app (Android `InputMethodService`), Kotlin, no UI libraries. Package
+`tv.mikehobbs.prosperityvoice`, Android 10+ (minSdk 29), arm64 only.
+
+- Speech: whisper.cpp v1.9.5 (fetched by CMake at build time) through a small JNI bridge
+  (`app/src/main/cpp`), model `ggml-base.en` downloaded by the app on first run. Recording is
+  chunked like Windows (cut at a pause after 20 s, or at 30 s, transcribed while you talk), so
+  there is no time limit. The screen stays on while recording.
+- Cleanup: Gemini Nano on the phone (ML Kit GenAI Prompt API, pieces of 250 words), Gemini
+  (`gemini-flash-latest`, user's free AI Studio key, with the same "ask again when slow" racing as
+  the desktop apps), or Off. Same instructions (`shared/`, packed as assets) and guards.
+  Claude and ChatGPT are not offered: a phone app can't use those subscriptions, only paid API keys.
+- Build: JDK 17, Android SDK 36, NDK 28.2, CMake 3.31.6. From `android/`:
+  `./gradlew testDebugUnitTest assembleDebug` (unit tests: text rules, racing, WAV) and
+  `./gradlew connectedDebugAndroidTest` with an emulator running (model download, 2- and 3-minute
+  transcription, keyboard typing into a text box, recording start and stop).
+- Release: `./gradlew assembleRelease`, signed with `.signing/android-release.keystore` (not in
+  git; its passwords are in `android/keystore.properties`, also not in git). Keep that key: an
+  update signed with a different key can't install over the old app. Publish the APK as
+  `ProsperityVoice.apk` on a GitHub release, so
+  https://github.com/itsmikehobbs/prosperity-voice/releases/latest/download/ProsperityVoice.apk
+  always points at the newest one. Raise `versionCode` and `versionName` in
+  `android/app/build.gradle.kts` for each release.
+- Tested 2026-11-04 on an Android 16 emulator (Pixel 9a): 3 min 9 s of speech transcribed in
+  13 s (658 of 677 words); the keyboard typed a dictation into a text box. Not tested: a real
+  phone, Gemini Nano (needs a supported phone), Gemini cloud cleanup (needs a key).
+
